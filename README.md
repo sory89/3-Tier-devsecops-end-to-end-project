@@ -8,15 +8,20 @@ This repository contains a simple Node.js API and a React client used for a user
 2. Install dependencies for both the API and client:
 
    ```bash
-   cd api && npm install
-   cd ../client && npm install
+   cd api && npm install && npm install -g pm2
+   cd ../client && npm install && npm install -g pm2
+   
    ```
 
 3. Start the API server:
 
    ```bash
    cd api
-   npm start
+   npm start or pm2 start index.js
+   pm2 list
+   pm2 logs
+   pm2 startup
+   pm2 save
    ```
 
 4. In a separate terminal, start the React client:
