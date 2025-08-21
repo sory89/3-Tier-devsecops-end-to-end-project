@@ -1,13 +1,12 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
-  name: jenkins-rolebinding
-  namespace: webapps
+  name: jenkins-cluster-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: jenkins-role
+  kind: ClusterRole
+  name: jenkins-cluster-role
 subjects:
   - kind: ServiceAccount
     name: jenkins
-    namespace: dev
+    namespace: prod
