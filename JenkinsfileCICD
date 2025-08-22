@@ -1,0 +1,154 @@
+pipeline {
+    agent any
+    
+    tools {
+        nodejs 'nodejs24'
+    }
+
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+    }
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/sory89/3-Tier-devsecops-end-to-end-project.git'
+            }
+        }
+        
+        stage('Frontend Compilation') {
+            steps {
+                dir('client') {
+                    sh 'find . -name "*.js" -exec node --check {} +'
+                }
+            }
+        }
+        
+        stage('Backend Compilation') {
+            steps {
+                dir('api') {
+                    sh 'find . -name "*.js" -exec node --check {} +'
+                }
+            }
+        }
+        
+        stage('GitLeaks Scan') {
+            steps {
+                sh 'gitleaks detect --source ./client --exit-code 1'
+                sh 'gitleaks detect --source ./api --exit-code 1'
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar') {
+                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=NodeJS-Project \
+                            -Dsonar.projectKey=NodeJS-Project '''
+                }
+            }
+        }
+        stage('Quality Gate Check') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
+                }
+            }
+        }
+        stage('Trivy FS Scan') {
+            steps {
+                sh 'trivy fs --format table -o fs-report.html .'
+            }
+        }
+        
+        stage('Build-Tag & Push Backend Docker Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
+                        dir('api') {
+                            sh 'docker build -t sorydiallo89/backend:latest .'
+                            sh 'trivy image --format table -o backend-image-report.html sorydiallo89/backend:latest '
+                            sh 'docker push sorydiallo89/backend:latest'
+                           
+                        }
+                    }
+                }
+            }
+        }  
+            
+        stage('Build-Tag & Push Frontend Docker Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
+                        dir('client') {
+                            sh 'docker build -t sorydiallo89/frontend:latest .'
+                            sh 'trivy image --format table -o frontend-image-report.html sorydiallo89/frontend:latest '
+                            sh 'docker push sorydiallo89/frontend:latest'
+                        }
+                    }
+                }
+            }
+             
+        }  
+        
+        stage('K8-deploy') {
+            steps {
+                script {
+                       withEnv(["KUBECONFIG=/home/jenkins/.kube/config"]) {
+                            sh 'kubectl apply -f k8s-dev/sc.yaml -n dev --validate=false'
+                            sh 'kubectl apply -f k8s-dev/mysql.yaml -n dev --validate=false'
+                            sh 'kubectl apply -f k8s-dev/backend.yaml -n dev --validate=false'
+                            sh 'kubectl apply -f k8s-dev/frontend.yaml -n dev --validate=false'
+                            sleep 30
+                            }
+                        }
+                }
+            }
+        
+        stage('verify-K8-deploy') {
+            steps {
+                script {
+                      withEnv(["KUBECONFIG=/home/jenkins/.kube/config"]) {
+                            sh 'kubectl get pods -n dev'
+                            sh 'kubectl get svc -n dev'
+                      }
+                }
+            }
+        }
+        
+        stage('Manual Approval for Production') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    input message: 'Approve deployment to PRODUCTION?', ok: 'Deploy'
+                }
+            }
+        }
+        
+       stage('Deployment To Prod') {
+            steps {
+                script {
+                    withEnv(["KUBECONFIG=/home/jenkins/.kube/config"]) {
+                    //    sh 'kubectl apply -f k8s-prod/sc.yaml'
+                        sleep 20
+                        sh 'kubectl apply -f k8s-prod/mysql.yaml -n prod'
+                        sh 'kubectl apply -f k8s-prod/backend.yaml -n prod'
+                        sh 'kubectl apply -f k8s-prod/frontend.yaml -n prod'
+                        sh 'kubectl apply -f k8s-prod/ci.yaml'
+                        sh 'kubectl apply -f k8s-prod/ingress.yaml -n prod'
+                        sleep 30
+                    }
+                }
+            }
+        }
+        
+        stage('Verify Deployment To Prod') {
+            steps {
+                script {
+                    withEnv(["KUBECONFIG=/home/jenkins/.kube/config"]) {
+                        sleep 20
+                         sh 'kubectl get ingress -n prod'
+                        
+                    }
+                }
+            }
+        }
+    }
+}
