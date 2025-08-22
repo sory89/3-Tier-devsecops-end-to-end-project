@@ -92,7 +92,7 @@ pipeline {
         stage('K8-deploy') {
             steps {
                 script {
-                       withEnv(["KUBECONFIG=/home/jenkins/.kube/config"]) {
+                       withEnv(["KUBECONFIG=/home/jenkins/.kube/config"]) {  // copy this ~/.kube/config here /home/jenkins/.kube/config
                             sh 'kubectl apply -f k8s-dev/sc.yaml -n dev --validate=false'
                             sh 'kubectl apply -f k8s-dev/mysql.yaml -n dev --validate=false'
                             sh 'kubectl apply -f k8s-dev/backend.yaml -n dev --validate=false'
