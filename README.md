@@ -1,5 +1,11 @@
 # 3-Tier DevSecOps Project
 
+![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
+![Jenkins](https://img.shields.io/badge/Jenkins-D24939?style=for-the-badge&logo=jenkins&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
+![DevSecOps](https://img.shields.io/badge/DevSecOps-Security-blueviolet?style=for-the-badge)
+
 This repository contains a simple Node.js API and a React client used for a user management demo. Follow the steps below to get the project running locally.
 
 ## Setup
